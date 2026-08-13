@@ -18,7 +18,7 @@ export default function FollowUpsPage() {
   const [showCompleted, setShowCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadFollowUps() }, [showCompleted])
+  useEffect(() => { loadFollowUps() }, [showCompleted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadFollowUps() {
     setLoading(true)
@@ -57,7 +57,6 @@ export default function FollowUpsPage() {
   }
 
   const open = followUps.filter(f => !f.completed)
-  const completed = followUps.filter(f => f.completed)
 
   if (loading) return <div className="text-[#5A6A84]">Loading...</div>
 

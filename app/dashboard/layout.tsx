@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!user) { router.push('/login'); return }
       setUserName(user.user_metadata?.full_name?.split(' ')[0] || user.email || '')
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function signOut() {
     const supabase = createClient()

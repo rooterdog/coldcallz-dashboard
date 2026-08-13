@@ -23,7 +23,7 @@ export default function VisitsPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadVisits() }, [filter])
+  useEffect(() => { loadVisits() }, [filter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadVisits() {
     setLoading(true)

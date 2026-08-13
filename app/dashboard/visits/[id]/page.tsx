@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
 type Visit = {
@@ -51,7 +52,7 @@ export default function VisitDetailPage() {
   const [editAddress, setEditAddress] = useState('')
   const [editPhone, setEditPhone] = useState('')
 
-  useEffect(() => { loadVisit() }, [id])
+  useEffect(() => { loadVisit() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadVisit() {
     const supabase = createClient()
@@ -260,7 +261,7 @@ export default function VisitDetailPage() {
           <div className="grid grid-cols-2 gap-3">
             {media.map(item => (
               <a key={item.id} href={item.storage_url} target="_blank" rel="noreferrer">
-                <img src={item.storage_url} alt="Visit photo" className="w-full h-48 object-cover rounded-xl hover:opacity-90 transition-opacity" />
+                <Image src={item.storage_url} alt="Visit photo" width={600} height={400} className="w-full h-48 object-cover rounded-xl hover:opacity-90 transition-opacity" />
               </a>
             ))}
           </div>
