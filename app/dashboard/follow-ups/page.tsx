@@ -10,7 +10,7 @@ type FollowUp = {
   due_date: string | null
   completed: boolean
   visit_id: string
-  visits: { business_name: string | null, visit_time: string } | null
+  visits: { business_name: string | null, visit_time: string } | { business_name: string | null, visit_time: string }[] | null
 }
 
 export default function FollowUpsPage() {
@@ -88,11 +88,14 @@ export default function FollowUpsPage() {
               <p className={`text-sm font-medium ${f.completed ? 'line-through text-[#5A6A84]' : 'text-[#E8EDF5]'}`}>
                 {f.description}
               </p>
-              {f.visits?.business_name && (
-                <Link href={`/dashboard/visits/${f.visit_id}`} className="text-xs text-[#38BDF8] hover:underline mt-1 block">
-                  📍 {f.visits.business_name}
-                </Link>
-              )}
+              {(() => {
+                const biz = Array.isArray(f.visits) ? f.visits[0]?.business_name : f.visits?.business_name
+                return biz ? (
+                  <Link href={`/dashboard/visits/${f.visit_id}`} className="text-xs text-[#38BDF8] hover:underline mt-1 block">
+                    📍 {biz}
+                  </Link>
+                ) : null
+              })()}
               {f.due_date && (
                 <p className={`text-xs mt-1 font-medium ${f.completed ? 'text-[#5A6A84]' : dueDateColor(f.due_date)}`}>
                   📅 {formatDueDate(f.due_date)}
