@@ -18,7 +18,7 @@ type FollowUp = {
   description: string
   due_date: string | null
   completed: boolean
-  visits: { business_name: string | null } | null
+  visits: { business_name: string | null } | { business_name: string | null }[] | null
 }
 
 type Stats = {
@@ -154,7 +154,7 @@ export default function DashboardPage() {
             {dueSoonFollowUps.map(f => (
               <div key={f.id} className="px-6 py-4">
                 <p className="text-sm text-[#E8EDF5] font-medium">{f.description}</p>
-                {f.visits?.business_name && <p className="text-xs text-[#5A6A84] mt-1">📍 {f.visits.business_name}</p>}
+                {(() => { const biz = Array.isArray(f.visits) ? f.visits[0]?.business_name : f.visits?.business_name; return biz ? <p className="text-xs text-[#5A6A84] mt-1">📍 {biz}</p> : null })()}
                 {f.due_date && <p className="text-xs text-[#FB7185] mt-1">📅 {formatDueDate(f.due_date)}</p>}
               </div>
             ))}
