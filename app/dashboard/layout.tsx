@@ -9,12 +9,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const pathname = usePathname()
   const [userName, setUserName] = useState('')
+  const [isManager, setIsManager] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push('/login'); return }
       setUserName(user.user_metadata?.full_name?.split(' ')[0] || user.email || '')
+
+      // Ensure user_profile exists (creates one for new/solo users)
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role, organization_id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!profile) {
+        await supabase.from('user_profiles').insert({
+          user_id: user.id,
+          full_name: user.user_metadata?.full_name || null,
+          organization_id: null,
+          role: 'solo',
+        })
+      } else {
+        setIsManager(profile.role === 'manager')
+      }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -28,6 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard', label: 'Overview', icon: '🏠' },
     { href: '/dashboard/visits', label: 'Visits', icon: '📋' },
     { href: '/dashboard/follow-ups', label: 'Follow-Ups', icon: '🔔' },
+    ...(isManager ? [{ href: '/dashboard/team', label: 'Team', icon: '👥' }] : []),
   ]
 
   return (
