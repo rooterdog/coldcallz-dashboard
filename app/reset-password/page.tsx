@@ -1,15 +1,31 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  const [ready, setReady] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    // Supabase puts the recovery token in the URL hash
+    // e.g. #access_token=...&type=recovery
+    const supabase = createClient()
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setReady(true)
+      }
+    })
+    // Also check if already in a valid session (e.g. came via callback route)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setReady(true)
+    })
+  }, [])
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
@@ -25,6 +41,14 @@ export default function ResetPasswordPage() {
     } else {
       router.push('/dashboard')
     }
+  }
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-[#080C18] flex items-center justify-center">
+        <p className="text-[#5A6A84]">Verifying reset link...</p>
+      </div>
+    )
   }
 
   return (
