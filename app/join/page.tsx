@@ -57,7 +57,7 @@ export default function JoinPage() {
         full_name: name.trim() || null,
         organization_id: invite.organization_id,
         role: 'rep',
-      })
+      }, { onConflict: 'user_id' })
 
       // Mark invite accepted
       await supabase.from('invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id)
@@ -68,7 +68,7 @@ export default function JoinPage() {
         full_name: name.trim() || null,
         organization_id: null,
         role: 'solo',
-      })
+      }, { onConflict: 'user_id' })
     }
 
     setStatus('done')

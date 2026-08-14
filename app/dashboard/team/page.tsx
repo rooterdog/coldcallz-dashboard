@@ -119,7 +119,7 @@ export default function TeamPage() {
       full_name: user.user_metadata?.full_name || null,
       organization_id: org.id,
       role: 'manager',
-    })
+    }, { onConflict: 'user_id' })
 
     setSetupMode(false)
     loadTeam()
