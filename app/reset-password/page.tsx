@@ -7,24 +7,33 @@ import { createClient } from '@/lib/supabase/client'
 export default function ResetPasswordPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const [invalid, setInvalid] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Supabase puts the recovery token in the URL hash
-    // e.g. #access_token=...&type=recovery
     const supabase = createClient()
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setReady(true)
-      }
-    })
-    // Also check if already in a valid session (e.g. came via callback route)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true)
-    })
+
+    // Parse hash from URL: #access_token=...&token_type=bearer&type=recovery
+    const hash = window.location.hash.substring(1)
+    const params = new URLSearchParams(hash)
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+    const type = params.get('type')
+
+    if (accessToken && type === 'recovery') {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' })
+        .then(({ error }) => {
+          if (error) { setInvalid(true) } else { setReady(true) }
+        })
+    } else {
+      // Maybe already has a session (came via callback)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) { setReady(true) } else { setInvalid(true) }
+      })
+    }
   }, [])
 
   async function handleReset(e: React.FormEvent) {
@@ -41,6 +50,17 @@ export default function ResetPasswordPage() {
     } else {
       router.push('/dashboard')
     }
+  }
+
+  if (invalid) {
+    return (
+      <div className="min-h-screen bg-[#080C18] flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-[#FB7185]">Invalid or expired reset link.</p>
+          <p className="text-[#5A6A84] text-sm mt-2">Please request a new password reset.</p>
+        </div>
+      </div>
+    )
   }
 
   if (!ready) {
