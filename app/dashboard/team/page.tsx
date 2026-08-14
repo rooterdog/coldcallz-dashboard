@@ -106,12 +106,25 @@ export default function TeamPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data: org } = await supabase
+    const { error: orgError } = await supabase
       .from('organizations')
       .insert({ name: newOrgName.trim() })
-      .select()
-      .single()
 
+    if (orgError) { setCreating(false); return }
+
+    // Fetch the org we just created via user_profiles after linking
+    // First get the org by name since we can't read it back yet (RLS)
+    // We'll use a workaround: insert then upsert profile using a raw query approach
+    // Instead, fetch all orgs and find ours — but we have no org_id yet.
+    // Solution: use service role via edge function, or fetch by name temporarily
+    const { data: orgs } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('name', newOrgName.trim())
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    const org = orgs?.[0]
     if (!org) { setCreating(false); return }
 
     await supabase.from('user_profiles').upsert({
@@ -147,16 +160,14 @@ export default function TeamPage() {
       return
     }
 
-    // Send invite email via Supabase auth
-    const { error: authError } = await supabase.auth.admin ?
-      { error: null } : // admin not available client-side
-      await supabase.auth.signInWithOtp({
-        email: inviteEmail.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/join`,
-          shouldCreateUser: true,
-        }
-      })
+    // Send invite email via Supabase magic link
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email: inviteEmail.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/join`,
+        shouldCreateUser: true,
+      }
+    })
 
     if (authError) {
       setInviteMsg('Invite recorded but email failed to send. Rep can sign up at ' + window.location.origin + '/join')
