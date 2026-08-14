@@ -164,7 +164,7 @@ export default function TeamPage() {
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: inviteEmail.trim().toLowerCase(),
       options: {
-        emailRedirectTo: `${window.location.origin}/join`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/join`,
         shouldCreateUser: true,
       }
     })
