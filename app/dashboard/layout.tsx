@@ -9,7 +9,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const pathname = usePathname()
   const [userName, setUserName] = useState('')
-  const [isManager, setIsManager] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -31,8 +30,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           organization_id: null,
           role: 'solo',
         })
-      } else {
-        setIsManager(profile.role === 'manager')
       }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -47,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard', label: 'Overview', icon: '🏠' },
     { href: '/dashboard/visits', label: 'Visits', icon: '📋' },
     { href: '/dashboard/follow-ups', label: 'Follow-Ups', icon: '🔔' },
-    ...(isManager ? [{ href: '/dashboard/team', label: 'Team', icon: '👥' }] : []),
+    { href: '/dashboard/team', label: 'Team', icon: '👥' },
   ]
 
   return (
