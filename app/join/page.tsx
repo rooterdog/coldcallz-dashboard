@@ -40,35 +40,12 @@ export default function JoinPage() {
       data: { full_name: name.trim() || undefined }
     })
 
-    // Find pending invite for this email and link them to the org
-    const { data: invite } = await supabase
-      .from('invites')
-      .select('*')
-      .eq('email', user.email!.toLowerCase())
-      .is('accepted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+    // Link to org via security definer function (bypasses RLS on invites)
+    await supabase.rpc('accept_invite')
 
-    if (invite) {
-      // Create user profile linked to the org
-      await supabase.from('user_profiles').upsert({
-        user_id: user.id,
-        full_name: name.trim() || null,
-        organization_id: invite.organization_id,
-        role: 'rep',
-      }, { onConflict: 'user_id' })
-
-      // Mark invite accepted
-      await supabase.from('invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id)
-    } else {
-      // No invite found — create solo profile
-      await supabase.from('user_profiles').upsert({
-        user_id: user.id,
-        full_name: name.trim() || null,
-        organization_id: null,
-        role: 'solo',
-      }, { onConflict: 'user_id' })
+    // Update name on profile after linking
+    if (name.trim()) {
+      await supabase.from('user_profiles').update({ full_name: name.trim() }).eq('user_id', user.id)
     }
 
     setStatus('done')
