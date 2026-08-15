@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type Profile = {
@@ -28,6 +29,7 @@ type RepStats = {
 }
 
 export default function TeamPage() {
+  const router = useRouter()
   const [orgId, setOrgId] = useState<string | null>(null)
   const [orgName, setOrgName] = useState('')
   const [members, setMembers] = useState<Profile[]>([])
@@ -61,6 +63,8 @@ export default function TeamPage() {
       setLoading(false)
       return
     }
+
+    if (profile.role === 'rep') { router.push('/dashboard'); return }
 
     setOrgId(profile.organization_id)
     setUserRole(profile.role)
