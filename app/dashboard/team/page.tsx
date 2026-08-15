@@ -160,20 +160,16 @@ export default function TeamPage() {
       return
     }
 
-    // Send invite email via Supabase magic link
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email: inviteEmail.trim().toLowerCase(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/join`,
-        shouldCreateUser: true,
-      }
-    })
+    // Fetch the token we just created
+    const { data: newInvite } = await supabase
+      .from('invites')
+      .select('token')
+      .eq('organization_id', orgId)
+      .eq('email', inviteEmail.trim().toLowerCase())
+      .single()
 
-    if (authError) {
-      setInviteMsg('Invite recorded but email failed to send. Rep can sign up at ' + window.location.origin + '/join')
-    } else {
-      setInviteMsg('Invite sent! They will receive an email to join.')
-    }
+    const joinLink = `${window.location.origin}/join?token=${newInvite?.token}`
+    setInviteMsg(`Invite recorded! Send this link to your rep: ${joinLink}`)
 
     setInviteEmail('')
     setInviting(false)
