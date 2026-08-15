@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 
 type Visit = {
   id: string
+  user_id: string
   visit_time: string
   status: string
   business_name: string | null
@@ -34,11 +35,35 @@ export default function DashboardPage() {
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
   const [dueSoonFollowUps, setDueSoonFollowUps] = useState<FollowUp[]>([])
   const [loading, setLoading] = useState(true)
+  const [isManager, setIsManager] = useState(false)
+  const [repNames, setRepNames] = useState<Record<string, string>>({})
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role, organization_id')
+      .eq('user_id', user.id)
+      .single()
+
+    const manager = profile?.role === 'manager'
+    setIsManager(manager)
+
+    if (manager && profile?.organization_id) {
+      const { data: members } = await supabase
+        .from('user_profiles')
+        .select('user_id, full_name')
+        .eq('organization_id', profile.organization_id)
+      const map: Record<string, string> = {}
+      members?.forEach(m => { map[m.user_id] = m.full_name || 'Unknown' })
+      setRepNames(map)
+    }
+
     const now = new Date()
     const todayStart = new Date(now); todayStart.setHours(0,0,0,0)
     const weekStart = new Date(now); weekStart.setDate(now.getDate() - 7)
@@ -51,7 +76,7 @@ export default function DashboardPage() {
       supabase.from('visits').select('*', { count: 'exact', head: true }).eq('status', 'completed').gte('visit_time', monthStart.toISOString()),
       supabase.from('visits').select('*', { count: 'exact', head: true }).eq('status', 'prospect'),
       supabase.from('follow_ups').select('*', { count: 'exact', head: true }).eq('completed', false).lte('due_date', today),
-      supabase.from('visits').select('id, visit_time, status, business_name, address, notes_summary').order('visit_time', { ascending: false }).limit(8),
+      supabase.from('visits').select('id, user_id, visit_time, status, business_name, address, notes_summary').order('visit_time', { ascending: false }).limit(8),
       supabase.from('follow_ups').select('id, description, due_date, completed, visits(business_name)').eq('completed', false).lte('due_date', today).order('due_date', { ascending: true }).limit(5),
     ])
 
@@ -129,9 +154,14 @@ export default function DashboardPage() {
             {recentVisits.map(visit => (
               <Link key={visit.id} href={`/dashboard/visits/${visit.id}`} className="flex items-start gap-3 px-6 py-4 hover:bg-[#1E2A42] transition-colors">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className={`text-xs font-semibold ${statusColor(visit.status)}`}>{statusLabel(visit.status)}</span>
                     <span className="text-xs text-[#3A4A62]">{formatDate(visit.visit_time)}</span>
+                    {isManager && repNames[visit.user_id] && (
+                      <span className="text-xs font-semibold bg-purple-400/10 text-purple-400 px-2 py-0.5 rounded-full">
+                        {repNames[visit.user_id]}
+                      </span>
+                    )}
                   </div>
                   {visit.business_name && <p className="text-sm font-semibold text-[#E8EDF5] truncate">{visit.business_name}</p>}
                   {visit.notes_summary && <p className="text-xs text-[#5A6A84] mt-1 line-clamp-2">{visit.notes_summary}</p>}
