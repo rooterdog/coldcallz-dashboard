@@ -40,6 +40,7 @@ export default function TeamPage() {
   const [setupMode, setSetupMode] = useState(false)
   const [newOrgName, setNewOrgName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   useEffect(() => { loadTeam() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -62,6 +63,7 @@ export default function TeamPage() {
     }
 
     setOrgId(profile.organization_id)
+    setUserRole(profile.role)
 
     const [orgRes, membersRes, invitesRes] = await Promise.all([
       supabase.from('organizations').select('name').eq('id', profile.organization_id).single(),
@@ -258,8 +260,8 @@ export default function TeamPage() {
         </div>
       </div>
 
-      {/* Invite */}
-      <div>
+      {/* Invite — managers only */}
+      {userRole === 'manager' && <div>
         <h3 className="text-xs font-bold text-[#5A6A84] uppercase tracking-wider mb-3">Invite a Rep</h3>
         <div className="bg-[#141B2D] rounded-2xl border border-[#1E2A42] p-6">
           <div className="flex gap-3">
@@ -280,15 +282,15 @@ export default function TeamPage() {
             </button>
           </div>
           {inviteMsg && (
-            <p className={`text-sm mt-3 ${inviteMsg.includes('sent') ? 'text-emerald-400' : 'text-[#FB7185]'}`}>
+            <p className={`text-sm mt-3 ${inviteMsg.includes('Invite') ? 'text-emerald-400' : 'text-[#FB7185]'}`}>
               {inviteMsg}
             </p>
           )}
         </div>
-      </div>
+      </div>}
 
-      {/* Pending invites */}
-      {pendingInvites.length > 0 && (
+      {/* Pending invites — managers only */}
+      {userRole === 'manager' && pendingInvites.length > 0 && (
         <div>
           <h3 className="text-xs font-bold text-[#5A6A84] uppercase tracking-wider mb-3">Pending Invites</h3>
           <div className="bg-[#141B2D] rounded-2xl border border-[#1E2A42] divide-y divide-[#1E2A42] overflow-hidden">

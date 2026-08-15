@@ -9,6 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const pathname = usePathname()
   const [userName, setUserName] = useState('')
+  const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -30,6 +31,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           organization_id: null,
           role: 'solo',
         })
+        setRole('solo')
+      } else {
+        setRole(profile.role)
       }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -41,11 +45,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const navItems = [
-    { href: '/dashboard', label: 'Overview', icon: '🏠' },
-    { href: '/dashboard/visits', label: 'Visits', icon: '📋' },
-    { href: '/dashboard/follow-ups', label: 'Follow-Ups', icon: '🔔' },
-    { href: '/dashboard/team', label: 'Team', icon: '👥' },
+    { href: '/dashboard', label: 'Overview', icon: '🏠', roles: null },
+    { href: '/dashboard/visits', label: 'Visits', icon: '📋', roles: null },
+    { href: '/dashboard/follow-ups', label: 'Follow-Ups', icon: '🔔', roles: null },
+    { href: '/dashboard/team', label: 'Team', icon: '👥', roles: ['manager', 'solo'] },
   ]
+
+  const visibleNavItems = navItems.filter(item =>
+    item.roles === null || role === null || item.roles.includes(role)
+  )
 
   return (
     <div className="min-h-screen bg-[#080C18] flex">
@@ -57,7 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map(item => (
+          {visibleNavItems.map(item => (
             <Link
               key={item.href}
               href={item.href}
