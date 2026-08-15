@@ -126,7 +126,7 @@ function JoinForm() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black text-[#38BDF8]">ColdCallz</h1>
-          <p className="text-[#5A6A84] mt-2">You've been invited to join a team</p>
+          <p className="text-[#5A6A84] mt-2">You&apos;ve been invited to join a team</p>
         </div>
 
         <form onSubmit={handleSignup} className="bg-[#141B2D] rounded-2xl p-6 border border-[#1E2A42] space-y-4">
