@@ -147,11 +147,14 @@ export default function TeamPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Record invite
+    // Generate token client-side so we always have it
+    const token = crypto.randomUUID()
+
     const { error: inviteError } = await supabase.from('invites').insert({
       organization_id: orgId,
       email: inviteEmail.trim().toLowerCase(),
       invited_by: user.id,
+      token,
     })
 
     if (inviteError) {
@@ -160,15 +163,7 @@ export default function TeamPage() {
       return
     }
 
-    // Fetch the token we just created
-    const { data: newInvite } = await supabase
-      .from('invites')
-      .select('token')
-      .eq('organization_id', orgId)
-      .eq('email', inviteEmail.trim().toLowerCase())
-      .single()
-
-    const joinLink = `${window.location.origin}/join?token=${newInvite?.token}`
+    const joinLink = `${window.location.origin}/join?token=${token}`
     setInviteMsg(`Invite recorded! Send this link to your rep: ${joinLink}`)
 
     setInviteEmail('')
