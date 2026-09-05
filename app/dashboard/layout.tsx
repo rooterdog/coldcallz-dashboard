@@ -49,6 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/visits', label: 'Visits', icon: '📋', roles: null },
     { href: '/dashboard/follow-ups', label: 'Follow-Ups', icon: '🔔', roles: null },
     { href: '/dashboard/team', label: 'Team', icon: '👥', roles: ['manager', 'solo'] },
+    { href: '/dashboard/billing', label: 'Billing', icon: '💳', roles: null },
   ]
 
   const visibleNavItems = navItems.filter(item =>
