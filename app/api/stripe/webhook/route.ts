@@ -41,11 +41,12 @@ export async function POST(request: NextRequest) {
       const sub = event.data.object as Stripe.Subscription
       const priceId = sub.items.data[0]?.price.id
       const tier = tierFromPriceId(priceId)
+      const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
       await updateProfile(sub.customer as string, {
         subscription_tier: tier,
         subscription_status: sub.status,
         trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-        current_period_ends_at: new Date(sub.current_period_end * 1000).toISOString(),
+        current_period_ends_at: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       })
       break
     }
