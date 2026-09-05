@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import UpgradeBanner from '@/components/UpgradeBanner'
 
 type Visit = {
   id: string
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [isManager, setIsManager] = useState(false)
   const [repNames, setRepNames] = useState<Record<string, string>>({})
+  const [isPro, setIsPro] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -47,9 +49,14 @@ export default function DashboardPage() {
 
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('role, organization_id')
+      .select('role, organization_id, subscription_tier, subscription_status')
       .eq('user_id', user.id)
       .single()
+
+    const tier = profile?.subscription_tier || 'free'
+    const status = profile?.subscription_status || null
+    const pro = (tier === 'pro' || tier === 'team') && (status === 'active' || status === 'trialing')
+    setIsPro(pro)
 
     const manager = profile?.role === 'manager'
     setIsManager(manager)
@@ -124,6 +131,10 @@ export default function DashboardPage() {
         <p className="text-[#5A6A84] mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
 
+      {!isPro && (
+        <UpgradeBanner message="You're on the Free plan — limited to 5 visits/day. Upgrade to Pro for unlimited visits, AI summaries, and more." />
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-5 gap-4">
         {[
@@ -177,18 +188,25 @@ export default function DashboardPage() {
             <h3 className="font-bold text-[#E8EDF5]">Follow-Ups Due</h3>
             <Link href="/dashboard/follow-ups" className="text-xs text-[#38BDF8] hover:underline">See all</Link>
           </div>
-          <div className="divide-y divide-[#1E2A42]">
-            {dueSoonFollowUps.length === 0 && (
-              <p className="text-[#5A6A84] text-sm p-6">All caught up! ✅</p>
-            )}
-            {dueSoonFollowUps.map(f => (
-              <div key={f.id} className="px-6 py-4">
-                <p className="text-sm text-[#E8EDF5] font-medium">{f.description}</p>
-                {(() => { const biz = Array.isArray(f.visits) ? f.visits[0]?.business_name : f.visits?.business_name; return biz ? <p className="text-xs text-[#5A6A84] mt-1">📍 {biz}</p> : null })()}
-                {f.due_date && <p className="text-xs text-[#FB7185] mt-1">📅 {formatDueDate(f.due_date)}</p>}
-              </div>
-            ))}
-          </div>
+          {!isPro ? (
+            <div className="p-6">
+              <p className="text-[#5A6A84] text-sm mb-3">Follow-up reminders are a Pro feature.</p>
+              <Link href="/dashboard/billing" className="text-xs text-amber-400 hover:underline font-semibold">Upgrade to unlock →</Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#1E2A42]">
+              {dueSoonFollowUps.length === 0 && (
+                <p className="text-[#5A6A84] text-sm p-6">All caught up! ✅</p>
+              )}
+              {dueSoonFollowUps.map(f => (
+                <div key={f.id} className="px-6 py-4">
+                  <p className="text-sm text-[#E8EDF5] font-medium">{f.description}</p>
+                  {(() => { const biz = Array.isArray(f.visits) ? f.visits[0]?.business_name : f.visits?.business_name; return biz ? <p className="text-xs text-[#5A6A84] mt-1">📍 {biz}</p> : null })()}
+                  {f.due_date && <p className="text-xs text-[#FB7185] mt-1">📅 {formatDueDate(f.due_date)}</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import UpgradeBanner from '@/components/UpgradeBanner'
 
 type FollowUp = {
   id: string
@@ -20,13 +21,14 @@ export default function FollowUpsPage() {
   const [showCompleted, setShowCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isManager, setIsManager] = useState(false)
+  const [isPro, setIsPro] = useState(false)
   const [reps, setReps] = useState<RepOption[]>([])
   const [repNames, setRepNames] = useState<Record<string, string>>({})
   const [repFilter, setRepFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
 
   useEffect(() => { init() }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { loadFollowUps() }, [showCompleted]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (isPro) loadFollowUps() }, [showCompleted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function init() {
     const supabase = createClient()
@@ -35,9 +37,14 @@ export default function FollowUpsPage() {
 
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('role, organization_id')
+      .select('role, organization_id, subscription_tier, subscription_status')
       .eq('user_id', user.id)
       .single()
+
+    const tier = profile?.subscription_tier || 'free'
+    const status = profile?.subscription_status || null
+    const pro = (tier === 'pro' || tier === 'team') && (status === 'active' || status === 'trialing')
+    setIsPro(pro)
 
     const manager = profile?.role === 'manager'
     setIsManager(manager)
@@ -53,7 +60,8 @@ export default function FollowUpsPage() {
       setReps(members?.map(m => ({ user_id: m.user_id, full_name: m.full_name || 'Unknown' })) || [])
     }
 
-    loadFollowUps()
+    if (pro) loadFollowUps()
+    else setLoading(false)
   }
 
   async function loadFollowUps() {
@@ -110,6 +118,23 @@ export default function FollowUpsPage() {
   const open = filtered.filter(f => !f.completed)
 
   if (loading) return <div className="text-[#5A6A84]">Loading...</div>
+
+  if (!isPro) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <div>
+          <h2 className="text-2xl font-black text-[#E8EDF5]">Follow-Ups</h2>
+          <p className="text-[#5A6A84] mt-1">Stay on top of your pipeline</p>
+        </div>
+        <UpgradeBanner message="Follow-up reminders are a Pro feature. Upgrade to track, schedule, and manage follow-ups on all your visits." />
+        <div className="bg-[#141B2D] rounded-2xl border border-[#1E2A42] p-8 text-center opacity-40 pointer-events-none select-none">
+          <p className="text-4xl mb-3">🔔</p>
+          <p className="text-[#E8EDF5] font-bold mb-1">No follow-ups visible</p>
+          <p className="text-[#5A6A84] text-sm">Upgrade to Pro to unlock this feature</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">

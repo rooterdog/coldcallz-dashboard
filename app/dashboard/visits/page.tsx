@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import UpgradeBanner from '@/components/UpgradeBanner'
 
 type Visit = {
   id: string
@@ -27,6 +28,7 @@ export default function VisitsPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [isManager, setIsManager] = useState(false)
+  const [isPro, setIsPro] = useState(false)
   const [reps, setReps] = useState<RepOption[]>([])
   const [repNames, setRepNames] = useState<Record<string, string>>({})
 
@@ -40,9 +42,13 @@ export default function VisitsPage() {
 
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('role, organization_id')
+      .select('role, organization_id, subscription_tier, subscription_status')
       .eq('user_id', user.id)
       .single()
+
+    const tier = profile?.subscription_tier || 'free'
+    const status = profile?.subscription_status || null
+    setIsPro((tier === 'pro' || tier === 'team') && (status === 'active' || status === 'trialing'))
 
     const manager = profile?.role === 'manager'
     setIsManager(manager)
@@ -131,13 +137,27 @@ export default function VisitsPage() {
           <h2 className="text-2xl font-black text-[#E8EDF5]">Visits</h2>
           <p className="text-[#5A6A84] mt-1">{filtered.length} records{search && ` matching "${search}"`}</p>
         </div>
-        <button
-          onClick={exportCSV}
-          className="bg-[#141B2D] border border-[#1E2A42] text-[#E8EDF5] px-4 py-2 rounded-xl text-sm font-semibold hover:border-[#38BDF8] transition-colors"
-        >
-          ⬇️ Export CSV
-        </button>
+        {isPro ? (
+          <button
+            onClick={exportCSV}
+            className="bg-[#141B2D] border border-[#1E2A42] text-[#E8EDF5] px-4 py-2 rounded-xl text-sm font-semibold hover:border-[#38BDF8] transition-colors"
+          >
+            ⬇️ Export CSV
+          </button>
+        ) : (
+          <Link
+            href="/dashboard/billing"
+            className="bg-[#141B2D] border border-amber-400/30 text-amber-300 px-4 py-2 rounded-xl text-sm font-semibold hover:border-amber-400 transition-colors"
+            title="Upgrade to Pro to export CSV"
+          >
+            🔒 Export CSV
+          </Link>
+        )}
       </div>
+
+      {!isPro && (
+        <UpgradeBanner message="You're on the Free plan — limited to 5 visits/day. Upgrade to Pro for unlimited visits, AI summaries, and CSV export." />
+      )}
 
       {/* Search + Filters */}
       <div className="space-y-3">
@@ -156,7 +176,6 @@ export default function VisitsPage() {
             )}
           </div>
 
-          {/* Rep filter — managers only */}
           {isManager && reps.length > 0 && (
             <select
               value={repFilter}
