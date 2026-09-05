@@ -39,13 +39,22 @@ function BillingContent() {
 
   async function checkout(priceId: string, skipTrial = false) {
     setUpgrading(priceId + (skipTrial ? '_skip' : ''))
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priceId, seats, skipTrial }),
-    })
-    const { url } = await res.json()
-    if (url) window.location.href = url
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId, seats, skipTrial }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert('Checkout error: ' + (data.error || 'Unknown error'))
+      }
+    } catch (err) {
+      alert('Failed to start checkout. Please try again.')
+      console.error(err)
+    }
     setUpgrading(null)
   }
 
