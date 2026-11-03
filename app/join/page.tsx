@@ -79,12 +79,14 @@ function JoinForm() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Could not establish session.'); setSaving(false); return }
 
-    // Create profile linked to org
+    // Create profile linked to org — team tier so rep bypasses free limits
     await supabase.from('user_profiles').upsert({
       user_id: user.id,
       full_name: name.trim(),
       organization_id: invite.organization_id,
       role: 'rep',
+      subscription_tier: 'team',
+      subscription_status: 'active',
     }, { onConflict: 'user_id' })
 
     // Mark invite accepted
