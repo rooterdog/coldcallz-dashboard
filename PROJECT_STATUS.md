@@ -1,55 +1,101 @@
 # ColdCallz — Project Status
 
-Last updated: 2026-08-15
+Last updated: 2026-11-14
 
 ---
 
 ## What This Is
 Cross-platform field sales cold call logger.
-- **Mobile app**: React Native + Expo (iOS/Android) — the primary product
-- **Web dashboard**: Next.js — manager/team view, hosted at dashboard.coldcallz.net
+- **Mobile app**: React Native + Expo SDK 57 (iOS) — the primary product
+- **Web dashboard**: Next.js 14 — manager/team view + billing
 
 ---
 
 ## Repos & Locations
 | Piece | Path | URL |
 |---|---|---|
-| Mobile app | `/Users/jefffurr/Documents/Dev/coldCallz` | Expo Go / TestFlight |
-| Web dashboard | `/Users/jefffurr/Documents/Dev/coldcallz-dashboard` | dashboard.coldcallz.net |
-| Supabase project | — | Supabase dashboard |
+| Mobile app | `/Users/jefffurr/Documents/Dev/coldCallz` | TestFlight / App Store |
+| Web dashboard | `/Users/jefffurr/Documents/Dev/coldcallz-dashboard` | www.coldcallz.net (Vercel) |
+| Supabase project | — | fshifikelywyqnlfcsva |
 
 ---
 
 ## Tech Stack
-- React Native + Expo ~54.0.35
+- React Native + Expo SDK 57
 - Next.js 14 (App Router, TypeScript, Tailwind)
-- Supabase (auth, Postgres DB, RLS, file storage)
+- Supabase (auth, Postgres DB, RLS, Edge Functions, file storage)
 - OpenAI Whisper (transcription) + GPT-4o (summaries, follow-up extraction)
 - Google Places API (business lookup by GPS)
-- Stripe (planned — not yet built)
+- RevenueCat (mobile IAP — iOS subscriptions)
+- Stripe (web billing — test mode, not yet live)
 
 ---
 
-## Database Schema (key tables)
-- **user_profiles** — user_id, full_name, role (solo/manager/rep), organization_id
-- **organizations** — id, name, created_by
-- **invites** — id, email, token (UUID), organization_id, invited_by, accepted_at
-- **visits** — id, user_id, business_name, address, status, visit_time, summary, follow_up_date
-- **follow_ups** — id, visit_id, note, due_date, completed
-- **visit_photos** — id, visit_id, storage_path, photo_type
+## Mobile App IDs
+- Bundle ID: `com.rooterdog.coldcallz`
+- EAS Project ID: `5c761ac5-073e-4ee6-b134-8560c643b039`
+- Apple Team: Jeff Furr - Individual (PTFUB9U96L)
+- RevenueCat API Key (production iOS): `appl_SVFVsDUHpiTnhYRoWrnZYUeAuxz`
+- RevenueCat Entitlement ID: `coldcallz_pro`
 
-### RLS Notes
-- Infinite recursion bug (42P17) was fixed using SECURITY DEFINER helper functions: `get_my_role()` and `get_my_org_id()`
-- invites table has `USING (true)` SELECT policy + `GRANT SELECT ON invites TO anon` so the join page can read tokens without auth
+---
+
+## Database — Key Tables
+| Table | Purpose |
+|---|---|
+| `users` | Mobile source of truth. Has `tier` (free/pro/team), `subscription_status`, `role`, `organization_id` |
+| `user_profiles` | Web dashboard source. Has `subscription_tier`, `subscription_status`, `role`, `organization_id` |
+| `organizations` | id, name, created_by |
+| `invites` | token-based rep invites (email, token UUID, organization_id, accepted_at) |
+| `visits` | id, user_id, business_name, address, status, visit_time, notes_summary, follow_up_date |
+| `follow_ups` | id, visit_id, note, due_date, completed |
+| `visit_photos` | id, visit_id, storage_path, photo_type |
+
+### Two-Table Sync (IMPORTANT)
+The app uses TWO user tables that are kept in sync via Postgres triggers:
+- Mobile signups → write to `users` → trigger syncs to `user_profiles`
+- Web/Stripe updates → write to `user_profiles` → trigger syncs to `users`
+- RevenueCat webhook → writes to BOTH tables directly
+
+**Triggers:**
+- `on_auth_user_created` → `handle_new_user()` — creates `users` row on auth signup
+- `sync_users_to_profile` (INSERT on `users`) → `sync_users_to_user_profile()` — creates `user_profiles` row
+- `sync_profile_to_users` (UPDATE only on `user_profiles`) → `sync_user_profile_to_users()` — syncs tier/status back to `users`
+
+Note: `sync_profile_to_users` is UPDATE only (not INSERT) to prevent circular trigger loop.
+Note: trigger functions must use `public.user_profiles` (schema-qualified) or they fail with "relation does not exist".
+
+---
+
+## Supabase Edge Functions
+| Function | Purpose | JWT |
+|---|---|---|
+| `process-visit` | Whisper transcription + GPT-4o summary for new visits | no-verify-jwt |
+| `append-notes` | Whisper + GPT-4o for appended voice notes on existing visits | no-verify-jwt |
+| `revenuecat-webhook` | Handles RevenueCat subscription events, updates both tables | no-verify-jwt |
+
+RevenueCat webhook URL: `https://fshifikelywyqnlfcsva.supabase.co/functions/v1/revenuecat-webhook`
+
+---
+
+## Pricing
+| Plan | Price | Channel |
+|---|---|---|
+| Free | $0 | — |
+| Pro Monthly | $12.00/mo | RevenueCat (mobile) / Stripe (web) |
+| Pro Annual | $99.99/yr | RevenueCat (mobile) / Stripe (web) |
+| Team | Manager-assigned | Web dashboard only |
+
+Free limit: 5 visits/day. Checked in `VoiceScreen.js` against `users.tier`.
 
 ---
 
 ## User Roles
-| Role | Can Do |
+| Role | Access |
 |---|---|
-| solo | Everything — no org, sees Team page to create org |
-| manager | Everything + Team page (invite reps, see all rep stats) |
-| rep | Visits/follow-ups for own data only. No Team page access (redirected away) |
+| solo | Individual user, no org |
+| manager | Team page, see all rep stats, invite reps |
+| rep | Own visits/follow-ups only. No Team page. Gets `team` tier (bypasses free limit) |
 
 ---
 
@@ -60,49 +106,47 @@ Cross-platform field sales cold call logger.
 | Visit list | ✅ Working |
 | Follow-ups | ✅ Working |
 | Team page (manager) | ✅ Working |
-| Org creation | ✅ Working |
-| Rep invite flow (token-based) | ✅ Working |
-| Rep join page (/join?token=) | ✅ Working |
-| Password reset | ✅ Working |
-| Reps blocked from /dashboard/team | ✅ Working |
-| Stripe billing | ❌ Not built |
-| Reps see only own data (RLS) | ⚠️ Not enforced yet — reps can currently see all org visit data |
+| Rep invite → sets team tier | ✅ Fixed Nov 2026 |
+| Upgrade banner flash fix | ✅ Fixed Nov 2026 |
+| Stripe billing (web) | ⚠️ Test mode only — not yet live |
 
 ---
 
 ## Mobile App — Feature Status
 | Feature | Status |
 |---|---|
-| Login / signup | ✅ Working (last tested before org/role changes) |
-| Log a visit (GPS + Places) | ✅ Working (last tested before org/role changes) |
-| Voice dictation / AI summary | ✅ Working (last tested before org/role changes) |
-| Photo capture | ✅ Working (last tested before org/role changes) |
-| Follow-ups | ✅ Working (last tested before org/role changes) |
-| Role awareness (rep vs manager) | ❌ Not implemented — app has no concept of orgs/roles yet |
-| Tested after DB schema changes | ⚠️ NOT YET — needs full smoke test |
+| Login / signup | ✅ Working |
+| Log a visit (GPS + Places) | ✅ Working |
+| Voice dictation / AI summary | ✅ Working |
+| Photo capture | ✅ Working |
+| Follow-ups | ✅ Working |
+| Append notes to existing visit | ✅ Working (mic button in VisitDetailScreen header) |
+| 5-visit free limit | ✅ Fixed Nov 2026 (was querying wrong table) |
+| RevenueCat IAP | ✅ Production key active |
+| Upgrade flow (post-purchase unlock) | ✅ Fixed Nov 2026 (entitlement ID + immediate Supabase update) |
+| TestFlight | ✅ Active |
+| App Store submission | ⏳ Pending |
 
 ---
 
 ## Known Issues / To-Do
-1. **[URGENT] Mobile app smoke test** — hasn't been tested since org/role DB changes. Should still work for reps (visits are user_id scoped) but needs verification.
-2. **Rep data isolation** — RLS currently lets reps query all org visits on the web. Need policies so reps only see their own rows.
-3. **Org name** — Jeff's org is called "test". Needs to be renamed to real agency name.
-4. **Stripe billing** — not started. Free/premium/premium-plus tiers defined but not enforced.
-5. **Mobile: manager view** — no team/rep visibility in the app yet (future feature).
+1. **Stripe live mode** — web billing is test mode only. Need to swap keys and recreate webhook before public launch.
+2. **App Store submission** — screenshots, privacy policy URL still needed.
+3. **Org name** — Jeff's org is called "test". Should be renamed.
+4. **Rep data isolation (web)** — RLS lets reps query all org visits on web. Low priority.
 
 ---
 
-## Invite Flow (how it works now)
-1. Manager goes to Team page → enters rep email → clicks Send Invite
-2. Page generates a UUID token client-side, inserts into `invites` table with that token
-3. Displays link: `https://dashboard.coldcallz.net/join?token=<uuid>`
-4. Manager copies link and sends to rep manually (email/text)
-5. Rep opens link → fill out name + password → account created, linked to org as 'rep'
-6. Invite marked accepted_at
+## Invite Flow
+1. Manager → Team page → enters rep email → Send Invite
+2. UUID token generated, stored in `invites` table
+3. Link shown: `https://www.coldcallz.net/join?token=<uuid>`
+4. Manager sends link to rep manually
+5. Rep opens link → enters name + password → account created with `role: rep`, `subscription_tier: team`
+6. Trigger syncs `team` tier to `users` table automatically
 
 ---
 
 ## Domains
-- coldcallz.net → Vercel (web dashboard) ✅
-- dashboard.coldcallz.net → Vercel ✅
 - www.coldcallz.net → Vercel ✅
+- coldcallz.net → Vercel ✅
