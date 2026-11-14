@@ -28,7 +28,7 @@ export default function VisitsPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [isManager, setIsManager] = useState(false)
-  const [isPro, setIsPro] = useState(false)
+  const [isPro, setIsPro] = useState<boolean | null>(null)
   const [reps, setReps] = useState<RepOption[]>([])
   const [repNames, setRepNames] = useState<Record<string, string>>({})
 
@@ -137,7 +137,7 @@ export default function VisitsPage() {
           <h2 className="text-2xl font-black text-[#E8EDF5]">Visits</h2>
           <p className="text-[#5A6A84] mt-1">{filtered.length} records{search && ` matching "${search}"`}</p>
         </div>
-        {isPro ? (
+        {isPro === true ? (
           <button
             onClick={exportCSV}
             className="bg-[#141B2D] border border-[#1E2A42] text-[#E8EDF5] px-4 py-2 rounded-xl text-sm font-semibold hover:border-[#38BDF8] transition-colors"
@@ -155,7 +155,7 @@ export default function VisitsPage() {
         )}
       </div>
 
-      {!loading && !isPro && (
+      {isPro === false && (
         <UpgradeBanner message="You're on the Free plan — limited to 5 visits/day. Upgrade to Pro for unlimited visits, AI summaries, and CSV export." />
       )}
 
