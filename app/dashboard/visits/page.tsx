@@ -155,7 +155,7 @@ export default function VisitsPage() {
         )}
       </div>
 
-      {!isPro && (
+      {!loading && !isPro && (
         <UpgradeBanner message="You're on the Free plan — limited to 5 visits/day. Upgrade to Pro for unlimited visits, AI summaries, and CSV export." />
       )}
 
